@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InvertedSoftware.PLogger.Core.APITest", "InvertedSoftware.PLogger.Core.APITest\InvertedSoftware.PLogger.Core.APITest.csproj", "{193E96F3-48E5-4443-8D39-57AD9C09E3D9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7172170C-6681-45DC-BDB8-3A6E49F1D2FB} = {7172170C-6681-45DC-BDB8-3A6E49F1D2FB}
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InvertedSoftware.PLogger.Core", "InvertedSoftware.PLogger.Core\InvertedSoftware.PLogger.Core.csproj", "{7172170C-6681-45DC-BDB8-3A6E49F1D2FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{193E96F3-48E5-4443-8D39-57AD9C09E3D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{193E96F3-48E5-4443-8D39-57AD9C09E3D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{193E96F3-48E5-4443-8D39-57AD9C09E3D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{193E96F3-48E5-4443-8D39-57AD9C09E3D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7172170C-6681-45DC-BDB8-3A6E49F1D2FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7172170C-6681-45DC-BDB8-3A6E49F1D2FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7172170C-6681-45DC-BDB8-3A6E49F1D2FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7172170C-6681-45DC-BDB8-3A6E49F1D2FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB9AABB5-FACF-47DB-980F-98AF10A78BC8}
+	EndGlobalSection
+EndGlobal
