@@ -3,11 +3,11 @@
 
 To add a PLogger provide to your application:
 
-Add: loggerFactory.AddPLogger(Configuration);
-In: public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
+Add: ```loggerFactory.AddPLogger(Configuration);```
+In: ```public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)```
 
 Sample appsettings.json
-
+```
 {
   "Logging": {
     "LogLevel": {
@@ -28,3 +28,4 @@ Sample appsettings.json
   },
   "AllowedHosts": "*"
 }
+```
