@@ -36,6 +36,8 @@ public static class PLoggerDiagnosticsExtensions
         var services = builder.Services;
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<PLoggerDiagnosticsOptions>, DiagnosticsConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<PLoggerDiagnosticsOptions>(
+            services, PLoggerDiagnosticsOptions.SectionName);
 
         if (configure is not null)
         {
@@ -108,7 +110,12 @@ public static class PLoggerDiagnosticsExtensions
             }
 
             var minSev = section["MinSeverity"];
-            if (!string.IsNullOrEmpty(minSev) && Enum.TryParse<LogLevel>(minSev, ignoreCase: true, out var lvl))
+            // Reject "None" — combined with the missing change-token in
+            // earlier phases this was a one-way trap door. Now we keep the
+            // last valid value (the default Error) on a None-or-bad input.
+            if (!string.IsNullOrEmpty(minSev)
+                && Enum.TryParse<LogLevel>(minSev, ignoreCase: true, out var lvl)
+                && lvl != LogLevel.None)
             {
                 options.MinSeverity = lvl;
             }

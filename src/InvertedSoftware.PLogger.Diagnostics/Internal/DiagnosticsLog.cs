@@ -34,4 +34,8 @@ internal static partial class DiagnosticsLog
     [LoggerMessage(EventId = 2006, Level = LogLevel.Warning,
         Message = "Diagnostic notifier {Notifier} failed; ignored.")]
     public static partial void NotifierFailed(ILogger logger, string notifier, Exception exception);
+
+    [LoggerMessage(EventId = 2007, Level = LogLevel.Warning,
+        Message = "Diagnostic pipeline drained one entry but the inner ProcessAsync threw; entry skipped.")]
+    public static partial void PipelineDrainEntryFailed(ILogger logger, Exception exception);
 }

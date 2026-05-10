@@ -27,6 +27,8 @@ public static class PLoggerSourceLinkExtensions
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<SourceLinkOptions>, SourceLinkConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<SourceLinkOptions>(
+            services, SourceLinkOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);

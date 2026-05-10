@@ -72,11 +72,22 @@ public sealed class SourceLinkResolver : ISourceLinkResolver
 
             try
             {
-                var snippet = _cache.GetOrCreate<SourceSnippet?>((filePath, line, opts.ContextLines), entry =>
+                // Non-generic cache API — TryGetValue / CreateEntry are
+                // trim-safe; GetOrCreate<T> drags `T` through reflection
+                // and would warn under EnableTrimAnalyzer.
+                object key = (filePath, line, opts.ContextLines);
+                SourceSnippet? snippet;
+                if (_cache.TryGetValue(key, out object? cached))
                 {
+                    snippet = cached as SourceSnippet;
+                }
+                else
+                {
+                    snippet = ReadLocal(filePath, line, opts.ContextLines);
+                    using var entry = _cache.CreateEntry(key);
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-                    return ReadLocal(filePath, line, opts.ContextLines);
-                });
+                    entry.Value = snippet;
+                }
 
                 if (snippet is not null)
                 {

@@ -51,7 +51,11 @@ public sealed class DiagnosticCaptureSink : IPLogSink
 
     public ValueTask DisposeAsync()
     {
-        _channel.Complete();
+        // The pipeline service owns the channel lifecycle; the sink's
+        // DisposeAsync runs inside Core's drain teardown which has no
+        // ordering guarantee against the diagnostic pipeline's StopAsync.
+        // Completing the channel here would close it out from under the
+        // pipeline mid-foreach.
         return ValueTask.CompletedTask;
     }
 }

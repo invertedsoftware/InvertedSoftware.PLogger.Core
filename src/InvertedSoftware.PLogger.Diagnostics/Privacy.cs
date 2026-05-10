@@ -17,6 +17,14 @@ public interface ITokenBudgetEnforcer
     /// <returns>True if the call may proceed; false if the budget is exhausted.</returns>
     bool TryReserve(int estimatedTokens);
 
+    /// <summary>
+    /// Returns previously-reserved tokens to the budget when the work
+    /// the caller intended to do didn't actually consume them
+    /// (cancellation, parse failure before any LLM call, etc.).
+    /// Implementations clamp to zero — no negative consumption.
+    /// </summary>
+    void Refund(int tokens);
+
     /// <summary>Returns the remaining budget in the current minute window.</summary>
     int CurrentRemaining();
 }

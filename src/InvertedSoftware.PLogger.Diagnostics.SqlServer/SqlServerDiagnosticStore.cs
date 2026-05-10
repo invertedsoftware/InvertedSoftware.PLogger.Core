@@ -2,6 +2,8 @@
 // Copyright (c) Inverted Software.
 
 using System.Data;
+using System.Text.Json;
+using InvertedSoftware.PLogger.Diagnostics.Internal;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -88,7 +90,11 @@ OUTPUT inserted.Id,
             cmd.Parameters.Add(new SqlParameter("@NormalizedStack", SqlDbType.NVarChar, -1) { Value = context.Fingerprint.NormalizedStack });
             cmd.Parameters.Add(new SqlParameter("@Diagnosis", SqlDbType.NVarChar, -1)
             {
-                Value = (object?)diagnosis?.ToString() ?? DBNull.Value,
+                // The column is documented as JSON. Default record ToString
+                // is NOT JSON, so we serialize via the source-gen context.
+                Value = diagnosis is null
+                    ? (object)DBNull.Value
+                    : JsonSerializer.Serialize(diagnosis, DiagnosticsJsonContext.Default.DiagnosisResult),
             });
 
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -151,14 +157,16 @@ SELECT TOP 1 Id, Fingerprint, FirstSeenUtc, LastSeenUtc, OccurrenceCount,
         // dev-box Testcontainers image) this errors out — caller catches.
         // The pipeline tolerates a failing FindSimilarAsync as a no-hit.
         const string sql = @"
+DECLARE @Probe VECTOR(1536) = JSON_ARRAY_TO_VECTOR(@Vector, 1536);
+
 SELECT TOP(@Limit)
        Id, Fingerprint, FirstSeenUtc, LastSeenUtc, OccurrenceCount,
        AppName, Environment, ExceptionType, ExceptionMessage, NormalizedStack,
        SourceFile, SourceLine, Diagnosis, ResolutionState, GitHubIssueUrl, AppliedCommitSha,
-       VECTOR_DISTANCE('cosine', DiagnosisVector, CAST(@Vector AS VECTOR(1536))) AS Distance
+       VECTOR_DISTANCE('cosine', DiagnosisVector, @Probe) AS Distance
   FROM plogger.Diagnostics
  WHERE AppName = @AppName AND Environment = @Environment AND DiagnosisVector IS NOT NULL
-   AND VECTOR_DISTANCE('cosine', DiagnosisVector, CAST(@Vector AS VECTOR(1536))) <= (1 - @Threshold)
+   AND VECTOR_DISTANCE('cosine', DiagnosisVector, @Probe) <= (1 - @Threshold)
  ORDER BY Distance ASC;
 ";
         await using var connection = new SqlConnection(sqlOpts.ConnectionString);

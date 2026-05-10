@@ -68,6 +68,9 @@ public sealed class DiagnosticPipelineService : BackgroundService
         var pending = _channel.Reader.Count;
         DiagnosticsLog.PipelineStopping(_logger, pending, grace.TotalMilliseconds);
 
+        // Hand each event a fresh CancellationToken.None so a single OCE
+        // doesn't abort the rest of the drain. The grace token is checked
+        // between events; an exhausted grace breaks cleanly.
         while (_channel.Reader.TryRead(out var evt))
         {
             if (cts.Token.IsCancellationRequested)
@@ -77,11 +80,11 @@ public sealed class DiagnosticPipelineService : BackgroundService
 
             try
             {
-                await _pipeline.ProcessAsync(evt, cts.Token).ConfigureAwait(false);
+                await _pipeline.ProcessAsync(evt, CancellationToken.None).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                break;
+                DiagnosticsLog.PipelineDrainEntryFailed(_logger, ex);
             }
         }
     }

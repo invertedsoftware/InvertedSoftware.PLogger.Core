@@ -4,10 +4,14 @@
     <RootNamespace>InvertedSoftware.PLogger.Diagnostics.SqlServer</RootNamespace>
     <AssemblyName>InvertedSoftware.PLogger.Diagnostics.SqlServer</AssemblyName>
     <IsPackable>true</IsPackable>
-    <IsAotCompatible>true</IsAotCompatible>
-    <IsTrimmable>true</IsTrimmable>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <!--
+      Microsoft.Data.SqlClient is not AOT-safe (dynamic SNI provider load,
+      reflection in the ADO.NET command path). Match the AI / Agents / Mcp
+      packages here so consumer publish-AOT signals correctly flag the
+      transitive constraint.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
 
     <PackageId>InvertedSoftware.PLogger.Diagnostics.SqlServer</PackageId>
     <Description>SQL Server 2025 backing store for PLogger diagnostics. Fingerprint-keyed dedup + occurrence counting today; VECTOR(N) similarity search lights up in InvertedSoftware.PLogger.Diagnostics.AI.</Description>

@@ -29,6 +29,8 @@ public static class PLoggerSqlServerExtensions
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<SqlServerDiagnosticsOptions>, SqlServerConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<SqlServerDiagnosticsOptions>(
+            services, SqlServerDiagnosticsOptions.SectionName);
 
         if (configure is not null)
         {
