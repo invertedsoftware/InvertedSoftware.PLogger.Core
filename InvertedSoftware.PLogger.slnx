@@ -7,6 +7,7 @@
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Agents/InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.AI/InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Mcp/InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.SourceLink/InvertedSoftware.PLogger.Diagnostics.SourceLink.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.SqlServer/InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics/InvertedSoftware.PLogger.Diagnostics.csproj" />
   </Folder>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics.SourceLink</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics.SourceLink</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics.SourceLink</PackageId>
+    <Description>Resolves stack frames to source code via PortablePDB + Source Link metadata. Local-first with optional GitHub raw API fallback.</Description>
+    <PackageTags>logging;diagnostics;sourcelink;portablepdb;plogger</PackageTags>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

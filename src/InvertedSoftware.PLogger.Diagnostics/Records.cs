@@ -36,7 +36,15 @@ public sealed record DiagnosticContext(
     ExceptionFingerprint Fingerprint,
     SourceSnippet? Source,
     IReadOnlyList<LogEvent> RecentTrail,
-    IReadOnlyList<DiagnosticRecord> SimilarPriorErrors);
+    IReadOnlyList<DiagnosticRecord> SimilarPriorErrors)
+{
+    /// <summary>
+    /// Optional embedding of <see cref="ExceptionFingerprint.NormalizedStack"/>
+    /// + redacted source. Populated when Phase 3's <c>EmbeddingDiagnosticEnricher</c>
+    /// is registered. Drives the vector similarity dedup gate.
+    /// </summary>
+    public ReadOnlyMemory<float>? Embedding { get; init; }
+}
 
 /// <summary>
 /// What an <see cref="IDiagnosticAgent"/> produces. Phase 2's no-op agent
