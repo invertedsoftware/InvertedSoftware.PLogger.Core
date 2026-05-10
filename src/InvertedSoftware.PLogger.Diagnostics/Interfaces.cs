@@ -71,3 +71,18 @@ public interface IDiagnosticPipeline
     /// </summary>
     ValueTask ProcessAsync(LogEvent evt, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Phase-6 notifier extension point. Implementations file GitHub issues,
+/// post Slack / Teams cards, etc. The pipeline calls every registered
+/// notifier after a successful persist; failures are swallowed and logged
+/// (logger invariant).
+/// </summary>
+public interface IDiagnosticNotifier
+{
+    ValueTask NotifyAsync(
+        DiagnosticRecord record,
+        DiagnosticContext context,
+        DiagnosisResult? diagnosis,
+        CancellationToken cancellationToken);
+}

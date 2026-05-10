@@ -18,17 +18,20 @@ public sealed class DefaultDiagnosticPipeline : IDiagnosticPipeline
     private readonly IDiagnosticEnricher _enricher;
     private readonly IDiagnosticAgent _agent;
     private readonly IDiagnosticStore _store;
+    private readonly IDiagnosticNotifier[] _notifiers;
     private readonly ILogger<DefaultDiagnosticPipeline> _logger;
 
     public DefaultDiagnosticPipeline(
         IDiagnosticEnricher enricher,
         IDiagnosticAgent agent,
         IDiagnosticStore store,
-        ILogger<DefaultDiagnosticPipeline> logger)
+        ILogger<DefaultDiagnosticPipeline> logger,
+        IEnumerable<IDiagnosticNotifier>? notifiers = null)
     {
         _enricher = enricher;
         _agent = agent;
         _store = store;
+        _notifiers = notifiers?.ToArray() ?? Array.Empty<IDiagnosticNotifier>();
         _logger = logger;
     }
 
@@ -95,9 +98,10 @@ public sealed class DefaultDiagnosticPipeline : IDiagnosticPipeline
             DiagnosticsLog.AgentFailed(_logger, ctx.Fingerprint.HashHex, ex);
         }
 
+        DiagnosticRecord? persisted = null;
         try
         {
-            await _store.UpsertAsync(ctx, diagnosis, cancellationToken).ConfigureAwait(false);
+            persisted = await _store.UpsertAsync(ctx, diagnosis, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -106,6 +110,29 @@ public sealed class DefaultDiagnosticPipeline : IDiagnosticPipeline
         catch (Exception ex)
         {
             DiagnosticsLog.StoreUpsertFailed(_logger, ctx.Fingerprint.HashHex, ex);
+        }
+
+        if (persisted is null || _notifiers.Length == 0)
+        {
+            return;
+        }
+
+        // Notifier fan-out. Each notifier is independently best-effort —
+        // a failing GitHub token shouldn't block the Slack card.
+        foreach (var notifier in _notifiers)
+        {
+            try
+            {
+                await notifier.NotifyAsync(persisted, ctx, diagnosis, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                DiagnosticsLog.NotifierFailed(_logger, notifier.GetType().Name, ex);
+            }
         }
     }
 }

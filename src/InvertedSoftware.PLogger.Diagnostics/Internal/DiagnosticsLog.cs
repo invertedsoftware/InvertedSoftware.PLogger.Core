@@ -30,4 +30,8 @@ internal static partial class DiagnosticsLog
     [LoggerMessage(EventId = 2005, Level = LogLevel.Information,
         Message = "Diagnostic pipeline stopped.")]
     public static partial void PipelineStopped(ILogger logger);
+
+    [LoggerMessage(EventId = 2006, Level = LogLevel.Warning,
+        Message = "Diagnostic notifier {Notifier} failed; ignored.")]
+    public static partial void NotifierFailed(ILogger logger, string notifier, Exception exception);
 }
