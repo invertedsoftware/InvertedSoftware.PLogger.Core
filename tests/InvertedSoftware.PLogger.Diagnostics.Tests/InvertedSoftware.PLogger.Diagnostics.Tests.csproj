@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +30,7 @@
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SqlServer\InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SourceLink\InvertedSoftware.PLogger.Diagnostics.SourceLink.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.AI\InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Agents\InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,13 +5,30 @@
     <AssemblyName>InvertedSoftware.PLogger.Diagnostics.Agents</AssemblyName>
     <IsPackable>true</IsPackable>
 
+    <!-- Same AOT posture as Diagnostics.AI: IChatClient response paths are reflection-heavy. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+
     <PackageId>InvertedSoftware.PLogger.Diagnostics.Agents</PackageId>
-    <Description>Multi-agent diagnostic pipeline (Triage / Context / Diagnosis / Fix) on Microsoft Agent Framework. Phase-4 placeholder.</Description>
+    <Description>Multi-agent diagnostic pipeline (Triage / Context / Diagnosis / Fix / Validator) on top of Microsoft.Extensions.AI IChatClient. Replaces the single-prompt AiDiagnosisAgent.</Description>
     <PackageTags>logging;diagnostics;agents;plogger</PackageTags>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics.AI\InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
   </ItemGroup>
 
 </Project>
