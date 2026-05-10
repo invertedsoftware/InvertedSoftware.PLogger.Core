@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using InvertedSoftware.PLogger.Diagnostics.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

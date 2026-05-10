@@ -37,8 +37,13 @@ public sealed partial class ValidatorAgent : IAgent<(ProposedFix Fix, string Exp
             return new ValidationResult(false, "Empty unified diff.");
         }
 
-        var minusFiles = ExtractAll(MinusHeaderRegex(), fix.UnifiedDiff);
-        var plusFiles = ExtractAll(PlusHeaderRegex(), fix.UnifiedDiff);
+        // Dedupe: a multi-hunk diff for one file legitimately repeats the
+        // header pair in some emitter modes; we only care about distinct
+        // files referenced.
+        var minusFiles = ExtractAll(MinusHeaderRegex(), fix.UnifiedDiff)
+            .Distinct(StringComparer.Ordinal).ToList();
+        var plusFiles = ExtractAll(PlusHeaderRegex(), fix.UnifiedDiff)
+            .Distinct(StringComparer.Ordinal).ToList();
 
         if (minusFiles.Count == 0 || plusFiles.Count == 0)
         {
@@ -50,8 +55,8 @@ public sealed partial class ValidatorAgent : IAgent<(ProposedFix Fix, string Exp
             return new ValidationResult(false, "Diff is missing at least one @@ hunk header.");
         }
 
-        // Single-file scope: every header must reference the same file.
-        if (minusFiles.Count + plusFiles.Count > 2)
+        // Single-file scope: each side must reference exactly one distinct file.
+        if (minusFiles.Count > 1 || plusFiles.Count > 1)
         {
             return new ValidationResult(false, $"Diff touches multiple files (expected only {expectedFilePath}).");
         }
@@ -77,7 +82,11 @@ public sealed partial class ValidatorAgent : IAgent<(ProposedFix Fix, string Exp
         {
             if (m.Groups.Count > 1)
             {
-                results.Add(m.Groups[1].Value.Trim());
+                // Multiline-mode '$' matches before '\n' but leaves '\r' inside the
+                // captured group on Windows-formatted output. TrimEnd is narrow on
+                // purpose — we don't want to strip leading whitespace that's part
+                // of the path (rare but legal).
+                results.Add(m.Groups[1].Value.TrimEnd('\r', ' ', '\t'));
             }
         }
         return results;
@@ -85,13 +94,33 @@ public sealed partial class ValidatorAgent : IAgent<(ProposedFix Fix, string Exp
 
     private static bool FilePathMatches(string a, string b)
     {
-        // Normalise path separators and compare suffix-based — diff headers
-        // are usually relative ("src/MyApp/Foo.cs") while StackFrame paths
-        // are absolute ("C:\repo\src\MyApp\Foo.cs"). Suffix match is the
-        // pragmatic cross-platform answer.
+        // Diff headers are usually relative ("src/MyApp/Foo.cs") while
+        // StackFrame paths are absolute ("C:\repo\src\MyApp\Foo.cs").
+        // Suffix-match is the pragmatic cross-platform answer, but we
+        // require the matched suffix to start at a path-separator
+        // boundary (or full equality) — otherwise "oo.cs" would suffix-match
+        // "Foo.cs" and let near-name collisions through.
         var na = a.Replace('\\', '/').TrimStart('.', '/');
         var nb = b.Replace('\\', '/').TrimStart('.', '/');
-        return na.EndsWith(nb, StringComparison.OrdinalIgnoreCase)
-            || nb.EndsWith(na, StringComparison.OrdinalIgnoreCase);
+        if (na.Equals(nb, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        return EndsWithBoundary(na, nb) || EndsWithBoundary(nb, na);
+
+        static bool EndsWithBoundary(string longer, string shorter)
+        {
+            if (longer.Length <= shorter.Length)
+            {
+                return false;
+            }
+            if (!longer.EndsWith(shorter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            // Char before the matched suffix must be '/' for the match to be
+            // path-segment-aligned.
+            return longer[^(shorter.Length + 1)] == '/';
+        }
     }
 }

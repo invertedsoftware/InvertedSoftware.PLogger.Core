@@ -95,7 +95,19 @@ public sealed partial class MultiAgentDiagnosisAgent : IDiagnosticAgent
         }
 
         // Stage 4 — fix + validate, optionally retried.
+        // The expected anchor is the StackFrame source path the enricher
+        // resolved, NOT the LLM-claimed path on the candidate fix; using
+        // the LLM's own claim defeats the validator's cross-check.
         ProposedFix? validated = null;
+        var expectedFilePath = enriched.Context.Source?.FilePath;
+        if (expectedFilePath is null)
+        {
+            // No source anchor → can't validate the diff scope. The FixAgent
+            // already short-circuits in this case; defensive only.
+            sw.Stop();
+            return new DiagnosisResult(hypothesis, Fix: null, ConfidenceScore: 0.6, ModelVersion: opts.FrontierModel, Duration: sw.Elapsed);
+        }
+
         for (var attempt = 0; attempt <= opts.FixRetryCount; attempt++)
         {
             if (!_budget.TryReserve(opts.MaxTokensPerAgent))
@@ -109,7 +121,7 @@ public sealed partial class MultiAgentDiagnosisAgent : IDiagnosticAgent
                 break;
             }
 
-            var verdict = await _validator.RunAsync((candidate, candidate.FilePath), cancellationToken).ConfigureAwait(false);
+            var verdict = await _validator.RunAsync((candidate, expectedFilePath), cancellationToken).ConfigureAwait(false);
             if (verdict is { IsValid: true })
             {
                 validated = candidate;

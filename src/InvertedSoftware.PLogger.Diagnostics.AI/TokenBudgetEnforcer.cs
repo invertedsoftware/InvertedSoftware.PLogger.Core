@@ -45,6 +45,19 @@ public sealed class TokenBudgetEnforcer : ITokenBudgetEnforcer
         }
     }
 
+    public void Refund(int tokens)
+    {
+        if (tokens <= 0)
+        {
+            return;
+        }
+        lock (_gate)
+        {
+            RolloverIfStale();
+            _consumed = Math.Max(0, _consumed - tokens);
+        }
+    }
+
     public int CurrentRemaining()
     {
         var budget = _options.CurrentValue.TokenBudgetPerMinute;

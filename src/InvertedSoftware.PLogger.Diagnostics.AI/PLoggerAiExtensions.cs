@@ -7,6 +7,7 @@ using InvertedSoftware.PLogger.Diagnostics.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.Logging;
@@ -29,6 +30,8 @@ public static class PLoggerAiExtensions
         var services = builder.Services;
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<PLoggerAiOptions>, PLoggerAiConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<PLoggerAiOptions>(
+            services, PLoggerAiOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
@@ -37,9 +40,10 @@ public static class PLoggerAiExtensions
         services.TryAddSingleton<ITokenBudgetEnforcer, TokenBudgetEnforcer>();
 
         // Replace the no-op agent with the real LLM-backed one. The caller
-        // must have registered an IChatClient — DI resolution fails fast at
-        // first diagnose call if not (we don't auto-register a provider).
+        // must have registered an IChatClient — the validator below fails
+        // host start if not, with an actionable message.
         services.Replace(ServiceDescriptor.Singleton<IDiagnosticAgent, AiDiagnosisAgent>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ChatClientStartupValidator>());
 
         return builder;
     }

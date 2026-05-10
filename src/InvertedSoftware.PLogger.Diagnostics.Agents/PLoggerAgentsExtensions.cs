@@ -3,10 +3,12 @@
 
 using System.Globalization;
 using InvertedSoftware.PLogger.Diagnostics;
+using InvertedSoftware.PLogger.Diagnostics.AI;
 using InvertedSoftware.PLogger.Diagnostics.Agents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.Logging;
@@ -27,6 +29,8 @@ public static class PLoggerAgentsExtensions
         var services = builder.Services;
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<PLoggerAgentsOptions>, PLoggerAgentsConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<PLoggerAgentsOptions>(
+            services, PLoggerAgentsOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
@@ -37,8 +41,12 @@ public static class PLoggerAgentsExtensions
         services.TryAddSingleton<DiagnosisAgent>();
         services.TryAddSingleton<FixAgent>();
         services.TryAddSingleton<ValidatorAgent>();
+        services.TryAddSingleton<ITokenBudgetEnforcer, TokenBudgetEnforcer>();
 
         services.Replace(ServiceDescriptor.Singleton<IDiagnosticAgent, MultiAgentDiagnosisAgent>());
+        // Same fail-fast IChatClient validator as AddPLoggerAi() registers — TryAddEnumerable
+        // dedupes if both are wired up.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ChatClientStartupValidator>());
 
         return builder;
     }

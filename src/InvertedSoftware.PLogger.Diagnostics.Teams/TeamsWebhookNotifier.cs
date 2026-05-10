@@ -3,6 +3,7 @@
 
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using InvertedSoftware.PLogger.Diagnostics.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -139,47 +140,3 @@ public sealed record TeamsCardElement(
 [JsonSourceGenerationOptions(WriteIndented = false, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(TeamsAdaptiveCardEnvelope))]
 internal sealed partial class TeamsJsonContext : JsonSerializerContext;
-
-internal sealed class RecentSet
-{
-    private readonly LinkedList<(string Key, DateTimeOffset Until)> _order = new();
-    private readonly Dictionary<string, LinkedListNode<(string Key, DateTimeOffset Until)>> _index = new(StringComparer.Ordinal);
-    private readonly int _capacity;
-    private readonly TimeSpan _ttl;
-    private readonly object _gate = new();
-
-    public RecentSet(int capacity, TimeSpan ttl)
-    {
-        _capacity = capacity;
-        _ttl = ttl;
-    }
-
-    public bool Add(string key)
-    {
-        var now = DateTimeOffset.UtcNow;
-        lock (_gate)
-        {
-            while (_order.First is { } first && first.Value.Until <= now)
-            {
-                _order.RemoveFirst();
-                _index.Remove(first.Value.Key);
-            }
-
-            if (_index.TryGetValue(key, out var node) && node.Value.Until > now)
-            {
-                return false;
-            }
-
-            if (_index.Count >= _capacity)
-            {
-                var oldest = _order.First!;
-                _order.RemoveFirst();
-                _index.Remove(oldest.Value.Key);
-            }
-
-            var newNode = _order.AddLast((key, now + _ttl));
-            _index[key] = newNode;
-            return true;
-        }
-    }
-}

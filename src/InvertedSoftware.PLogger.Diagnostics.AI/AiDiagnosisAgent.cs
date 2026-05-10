@@ -102,10 +102,14 @@ public sealed partial class AiDiagnosisAgent : IDiagnosticAgent
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Caller cancelled before we sent — refund the reservation.
+            _budget.Refund(opts.MaxTokensPerCall);
             return null;
         }
         catch (Exception ex)
         {
+            // Network / SDK failure before we got a response — refund.
+            _budget.Refund(opts.MaxTokensPerCall);
             LogChatClientFailed(_logger, context.Fingerprint.HashHex, ex);
             return null;
         }
@@ -114,11 +118,14 @@ public sealed partial class AiDiagnosisAgent : IDiagnosticAgent
         var text = response.Text;
         if (string.IsNullOrWhiteSpace(text))
         {
+            // Model returned nothing usable; tokens were spent on the request
+            // even if the response was empty, so do NOT refund here.
             return null;
         }
 
         if (!TryParse(text, out var hypothesis, out var fix, out var confidence))
         {
+            // Same — tokens were spent, just not usefully.
             LogNonJsonOutput(_logger, context.Fingerprint.HashHex);
             return null;
         }

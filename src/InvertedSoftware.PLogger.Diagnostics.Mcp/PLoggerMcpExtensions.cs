@@ -28,6 +28,8 @@ public static class PLoggerMcpExtensions
         var services = builder.Services;
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<PLoggerMcpOptions>, PLoggerMcpConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<PLoggerMcpOptions>(
+            services, PLoggerMcpOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
@@ -50,33 +52,65 @@ public static class PLoggerMcpExtensions
     public static IEndpointRouteBuilder MapPLoggerMcp(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        var opts = app.Services.GetRequiredService<IOptions<PLoggerMcpOptions>>().Value;
-        if (!opts.Enabled)
+        var monitor = app.Services.GetRequiredService<IOptionsMonitor<PLoggerMcpOptions>>();
+        var initial = monitor.CurrentValue;
+        if (!initial.Enabled)
         {
             return app;
         }
 
-        // Bearer guard. Lightweight — just header check + 401.
-        if (!string.IsNullOrEmpty(opts.BearerToken))
+        // Bearer guard. Reads the live options each request so rotated
+        // tokens take effect without restart. The compare uses
+        // FixedTimeEquals to avoid a timing oracle on the prefix.
+        app.Use(async (context, next) =>
         {
-            app.Use(async (context, next) =>
+            var current = monitor.CurrentValue;
+            if (current.Enabled
+                && !string.IsNullOrEmpty(current.BearerToken)
+                && context.Request.Path.StartsWithSegments(current.RoutePrefix, StringComparison.OrdinalIgnoreCase))
             {
-                if (context.Request.Path.StartsWithSegments(opts.RoutePrefix, StringComparison.OrdinalIgnoreCase))
+                if (!IsAuthorized(context.Request.Headers.Authorization.ToString(), current.BearerToken))
                 {
-                    var auth = context.Request.Headers.Authorization.ToString();
-                    if (!auth.Equals($"Bearer {opts.BearerToken}", StringComparison.Ordinal))
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        await context.Response.WriteAsync("Unauthorized");
-                        return;
-                    }
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsync("Unauthorized");
+                    return;
                 }
-                await next();
-            });
+            }
+            await next();
+        });
+
+        app.MapMcp(initial.RoutePrefix);
+        return app;
+    }
+
+    private static bool IsAuthorized(string authHeader, string expectedToken)
+    {
+        const string prefix = "Bearer ";
+        if (authHeader.Length < prefix.Length || !authHeader.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return false;
         }
 
-        app.MapMcp(opts.RoutePrefix);
-        return app;
+        // Length-check first so the constant-time compare doesn't leak via
+        // a side-channel on the buffer-allocation cost.
+        var presented = authHeader.AsSpan(prefix.Length);
+        if (presented.Length != expectedToken.Length)
+        {
+            return false;
+        }
+
+        // FixedTimeEquals over UTF-8 bytes — comparison time depends only on length.
+        Span<byte> a = stackalloc byte[256];
+        Span<byte> b = stackalloc byte[256];
+        var aLen = System.Text.Encoding.UTF8.GetByteCount(presented);
+        var bLen = System.Text.Encoding.UTF8.GetByteCount(expectedToken.AsSpan());
+        if (aLen != bLen || aLen > a.Length)
+        {
+            return false;
+        }
+        System.Text.Encoding.UTF8.GetBytes(presented, a);
+        System.Text.Encoding.UTF8.GetBytes(expectedToken.AsSpan(), b);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a[..aLen], b[..bLen]);
     }
 
     private sealed class PLoggerMcpConfigureOptions : IConfigureOptions<PLoggerMcpOptions>
