@@ -5,10 +5,30 @@
     <AssemblyName>InvertedSoftware.PLogger.Diagnostics.AI</AssemblyName>
     <IsPackable>true</IsPackable>
 
+    <!--
+      AOT opt-out: Microsoft.Extensions.AI.IChatClient + structured output
+      paths use reflection over the response shape. We document this in the
+      package metadata; everything ELSE in the framework stays AOT-clean.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+
     <PackageId>InvertedSoftware.PLogger.Diagnostics.AI</PackageId>
-    <Description>Microsoft.Extensions.AI integration for PLogger — root-cause diagnosis via IChatClient. Phase-3 placeholder.</Description>
+    <Description>Microsoft.Extensions.AI integration for PLogger — root-cause diagnosis via IChatClient with redaction, token-budget gating, and vector dedup.</Description>
     <PackageTags>logging;diagnostics;ai;ichatclient;plogger</PackageTags>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
