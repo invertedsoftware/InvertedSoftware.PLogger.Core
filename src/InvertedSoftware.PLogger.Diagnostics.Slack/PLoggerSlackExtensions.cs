@@ -21,14 +21,15 @@ public static class PLoggerSlackExtensions
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<SlackNotifierOptions>, SlackConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<SlackNotifierOptions>(
+            services, SlackNotifierOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
         }
 
         services.AddHttpClient<SlackWebhookNotifier>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier>(sp =>
-            sp.GetRequiredService<SlackWebhookNotifier>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier, SlackWebhookNotifier>());
 
         return builder;
     }

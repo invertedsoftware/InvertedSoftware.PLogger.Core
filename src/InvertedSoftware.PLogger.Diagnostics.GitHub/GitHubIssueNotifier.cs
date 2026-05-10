@@ -14,9 +14,19 @@ namespace InvertedSoftware.PLogger.Diagnostics.GitHub;
 /// Files a GitHub issue per unique fingerprint. Idempotent: searches by
 /// the fingerprint hex tag in the issue title before creating a new one.
 /// </summary>
+/// <remarks>
+/// All headers are set on each <see cref="HttpRequestMessage"/> rather than
+/// on <see cref="HttpClient.DefaultRequestHeaders"/>. The notifier is a
+/// singleton (so notifier fan-out doesn't allocate per call), but the
+/// underlying typed <see cref="HttpClient"/> is shared — mutating
+/// <c>DefaultRequestHeaders</c> per call would race across concurrent
+/// notifications and could leak the auth token between callers.
+/// </remarks>
 public sealed class GitHubIssueNotifier : IDiagnosticNotifier
 {
     internal const string FingerprintTagPrefix = "[plogger-fp:";
+    private static readonly ProductInfoHeaderValue UserAgent = new("PLogger", "2.0");
+    private static readonly MediaTypeWithQualityHeaderValue AcceptGitHubJson = new("application/vnd.github+json");
 
     private readonly HttpClient _http;
     private readonly IOptionsMonitor<GitHubNotifierOptions> _options;
@@ -49,10 +59,9 @@ public sealed class GitHubIssueNotifier : IDiagnosticNotifier
             return;
         }
 
-        ConfigureClient(opts);
         var fingerprintHex = context.Fingerprint.HashHex;
 
-        if (await IsAlreadyFiledAsync(opts.Repository, fingerprintHex, cancellationToken).ConfigureAwait(false))
+        if (await IsAlreadyFiledAsync(opts, fingerprintHex, cancellationToken).ConfigureAwait(false))
         {
             return;
         }
@@ -64,7 +73,10 @@ public sealed class GitHubIssueNotifier : IDiagnosticNotifier
         cts.CancelAfter(opts.RequestTimeout);
 
         var url = $"https://api.github.com/repos/{opts.Repository}/issues";
-        var response = await _http.PostAsJsonAsync(url, payload, GitHubJsonContext.Default.GitHubCreateIssueRequest, cts.Token).ConfigureAwait(false);
+        using var request = BuildRequest(HttpMethod.Post, url, opts.Token);
+        request.Content = JsonContent.Create(payload, GitHubJsonContext.Default.GitHubCreateIssueRequest);
+
+        var response = await _http.SendAsync(request, cts.Token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogWarning("PLogger GitHub: issue creation returned {Status} for fingerprint {Fingerprint}.",
@@ -72,13 +84,17 @@ public sealed class GitHubIssueNotifier : IDiagnosticNotifier
         }
     }
 
-    private async Task<bool> IsAlreadyFiledAsync(string repo, string fingerprintHex, CancellationToken cancellationToken)
+    private async Task<bool> IsAlreadyFiledAsync(
+        GitHubNotifierOptions opts,
+        string fingerprintHex,
+        CancellationToken cancellationToken)
     {
-        var query = Uri.EscapeDataString($"repo:{repo} {FingerprintTagPrefix}{fingerprintHex}] in:title");
+        var query = Uri.EscapeDataString($"repo:{opts.Repository} {FingerprintTagPrefix}{fingerprintHex}] in:title");
         var url = $"https://api.github.com/search/issues?q={query}";
         try
         {
-            var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var request = BuildRequest(HttpMethod.Get, url, opts.Token);
+            var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 return false;
@@ -96,6 +112,16 @@ public sealed class GitHubIssueNotifier : IDiagnosticNotifier
             // still better than missing the notification.
             return false;
         }
+    }
+
+    /// <summary>Builds a per-request message with auth + UA on the request, not the shared client.</summary>
+    private static HttpRequestMessage BuildRequest(HttpMethod method, string url, string token)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.UserAgent.Add(UserAgent);
+        request.Headers.Accept.Add(AcceptGitHubJson);
+        return request;
     }
 
     private static (string Title, string Body) RenderIssue(
@@ -156,17 +182,6 @@ public sealed class GitHubIssueNotifier : IDiagnosticNotifier
 
     private static string Truncate(string s, int max)
         => s.Length <= max ? s : s.AsSpan(0, max).ToString() + "…";
-
-    private void ConfigureClient(GitHubNotifierOptions opts)
-    {
-        // HttpClient is provided fresh per request scope by IHttpClientFactory;
-        // setting headers each call is safe.
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", opts.Token);
-        _http.DefaultRequestHeaders.UserAgent.Clear();
-        _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("PLogger", "2.0"));
-        _http.DefaultRequestHeaders.Accept.Clear();
-        _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-    }
 }
 
 /// <summary>Wire-format request body for issue creation.</summary>

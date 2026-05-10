@@ -21,14 +21,15 @@ public static class PLoggerGitHubExtensions
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<GitHubNotifierOptions>, GitHubConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<GitHubNotifierOptions>(
+            services, GitHubNotifierOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
         }
 
         services.AddHttpClient<GitHubIssueNotifier>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier>(sp =>
-            sp.GetRequiredService<GitHubIssueNotifier>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier, GitHubIssueNotifier>());
 
         return builder;
     }

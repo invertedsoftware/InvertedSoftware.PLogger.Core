@@ -21,14 +21,15 @@ public static class PLoggerTeamsExtensions
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IConfigureOptions<TeamsNotifierOptions>, TeamsConfigureOptions>());
+        PLoggerOptionsRegistration.AddConfigurationChangeTokenSource<TeamsNotifierOptions>(
+            services, TeamsNotifierOptions.SectionName);
         if (configure is not null)
         {
             services.Configure(configure);
         }
 
         services.AddHttpClient<TeamsWebhookNotifier>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier>(sp =>
-            sp.GetRequiredService<TeamsWebhookNotifier>()));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IDiagnosticNotifier, TeamsWebhookNotifier>());
 
         return builder;
     }
