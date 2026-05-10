@@ -1,90 +1,147 @@
-﻿/* Copyright (c) Year(2020), Inverted Software
- *
- * Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, 
- * provided that the above copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
- * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
+// Copyright (c) Inverted Software. All rights reserved.
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using System;
+using Microsoft.Extensions.Options;
 
-namespace InvertedSoftware.PLogger.Core
+namespace InvertedSoftware.PLogger.Core;
+
+/// <summary>
+/// The hot-path <see cref="ILogger"/> implementation. Materializes a single
+/// <see cref="LogEvent"/> per call and posts it to the channel. Never
+/// performs I/O, never blocks, never throws into user code.
+/// </summary>
+public sealed class PLogger : ILogger
 {
-    public class PLogger : ILogger
+    private static readonly IReadOnlyList<KeyValuePair<string, object?>> EmptyScope = Array.Empty<KeyValuePair<string, object?>>();
+
+    [ThreadStatic]
+    private static List<KeyValuePair<string, object?>>? t_scopeBuffer;
+
+    private static readonly Action<object?, List<KeyValuePair<string, object?>>> AppendScope = static (scope, buf) =>
     {
-        private readonly string _name;
-        private readonly PLoggerSettings _settings;
-        private readonly IExternalScopeProvider _externalScopeProvider;
-        public static Lazy<IPLogProvider> logProvider = null;
-
-        public PLogger(string name)
-            : this(name, settings: new PLoggerSettings())
+        if (scope is IEnumerable<KeyValuePair<string, object?>> kvps)
         {
-        }
-
-        public PLogger(string name, PLoggerSettings settings)
-            : this(name, settings, new LoggerExternalScopeProvider())
-        {
-
-        }
-
-        public PLogger(string name, PLoggerSettings settings, IExternalScopeProvider externalScopeProvider)
-        {
-            _name = string.IsNullOrEmpty(name) ? nameof(PLogger) : name;
-            _settings = settings;
-            _externalScopeProvider = externalScopeProvider;
-            // Initialize the singleton type
-            if (settings.PLogType.ToLower() == "file")
-                logProvider = new Lazy<IPLogProvider>(() => new RollingFileLogProvider(_settings), true);
-            else
-                logProvider = new Lazy<IPLogProvider>(() => new SqlLogProvider(_settings), true);
-        }
-        public IDisposable BeginScope<TState>(TState state)
-        {
-            return _externalScopeProvider?.Push(state);
-        }
-
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return _settings.PLogEnabled && logLevel != LogLevel.None &&
-                (_settings.Filter == null || _settings.Filter(_name, logLevel));
-        }
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-        {
-            if (!IsEnabled(logLevel))
+            foreach (var kv in kvps)
             {
-                return;
+                buf.Add(kv);
             }
-
-            if (formatter == null)
-            {
-                throw new ArgumentNullException(nameof(formatter));
-            }
-
-            var message = formatter(state, exception);
-
-            if (string.IsNullOrEmpty(message))
-            {
-                return;
-            }
-
-            if (!String.IsNullOrWhiteSpace(_settings.PLogFileMessageTemplate))
-                message = string.Format(_settings.PLogFileMessageTemplate, message);
-
-            message = _name + Environment.NewLine + message;
-
-            if (exception != null)
-            {
-                message += Environment.NewLine + Environment.NewLine + exception;
-            }
-
-            _externalScopeProvider?.ForEachScope<object>((scope, _) => message += Environment.NewLine + scope, null);
-
-            logProvider.Value.WriteLog(message, logLevel, eventId.Id);
         }
+        else if (scope is not null)
+        {
+            buf.Add(new KeyValuePair<string, object?>("Scope", scope));
+        }
+    };
+
+    private readonly string _category;
+    private readonly IOptionsMonitor<PLoggerOptions> _options;
+    private readonly PLoggerChannel _channel;
+    private readonly IExternalScopeProvider? _scopeProvider;
+
+    public PLogger(
+        string category,
+        IOptionsMonitor<PLoggerOptions> options,
+        PLoggerChannel channel,
+        IExternalScopeProvider? scopeProvider)
+    {
+        _category = string.IsNullOrEmpty(category) ? nameof(PLogger) : category;
+        _options = options;
+        _channel = channel;
+        _scopeProvider = scopeProvider;
+    }
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        => _scopeProvider?.Push(state);
+
+    public bool IsEnabled(LogLevel logLevel)
+    {
+        if (logLevel == LogLevel.None)
+        {
+            return false;
+        }
+
+        var opts = _options.CurrentValue;
+        if (!opts.PLogEnabled)
+        {
+            return false;
+        }
+
+        return opts.Filter is null || opts.Filter(_category, logLevel);
+    }
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        if (!IsEnabled(logLevel))
+        {
+            return;
+        }
+
+        ArgumentNullException.ThrowIfNull(formatter);
+
+        string message;
+        try
+        {
+            message = formatter(state, exception);
+        }
+        catch
+        {
+            // Logger invariant: a faulty formatter must never bubble.
+            return;
+        }
+
+        if (string.IsNullOrEmpty(message) && exception is null)
+        {
+            return;
+        }
+
+        var scope = CaptureScope();
+        var activity = Activity.Current;
+
+        var evt = new LogEvent(
+            TimestampUtc: DateTimeOffset.UtcNow,
+            Level: logLevel,
+            Category: _category,
+            EventId: eventId,
+            Message: message,
+            Exception: exception,
+            Scope: scope,
+            TraceId: activity?.TraceId.ToString(),
+            SpanId: activity?.SpanId.ToString());
+
+        try
+        {
+            _channel.TryWrite(evt);
+        }
+        catch
+        {
+            // Logger invariant: dropping a log entry is preferable to throwing.
+        }
+    }
+
+    private IReadOnlyList<KeyValuePair<string, object?>> CaptureScope()
+    {
+        if (_scopeProvider is null)
+        {
+            return EmptyScope;
+        }
+
+        var buf = t_scopeBuffer ??= new List<KeyValuePair<string, object?>>(4);
+        buf.Clear();
+        _scopeProvider.ForEachScope(AppendScope, buf);
+
+        if (buf.Count == 0)
+        {
+            return EmptyScope;
+        }
+
+        var snapshot = new KeyValuePair<string, object?>[buf.Count];
+        buf.CopyTo(snapshot);
+        buf.Clear();
+        return snapshot;
     }
 }

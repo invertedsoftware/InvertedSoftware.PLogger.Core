@@ -1,99 +1,129 @@
-﻿/* Copyright (c) Year(2020), Inverted Software
- *
- * Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, 
- * provided that the above copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
- * DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
+// Copyright (c) Inverted Software. All rights reserved.
 
 using InvertedSoftware.PLogger.Core;
+using InvertedSoftware.PLogger.Core.Internal;
+using InvertedSoftware.PLogger.Core.Sinks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Configuration;
+using Microsoft.Extensions.Options;
 
-namespace Microsoft.Extensions.Logging
+// The original extensions live under Microsoft.Extensions.Logging so v1
+// callers don't need a using-directive change.
+namespace Microsoft.Extensions.Logging;
+
+/// <summary>
+/// Drop-in <c>AddPLogger</c> overloads. Every signature from PLogger 1.x is
+/// preserved; under the hood they all converge on the new options + channel
+/// + drain pipeline.
+/// </summary>
+public static class PLoggerFactoryExtensions
 {
-	public static class PLoggerFactoryExtensions
-	{
-		public static ILoggingBuilder AddPLogger(this ILoggingBuilder builder)
-		{
-			if (builder == null)
-			{
-				throw new ArgumentNullException(nameof(builder));
-			}
+    public static ILoggingBuilder AddPLogger(this ILoggingBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        RegisterCoreServices(builder);
+        return builder;
+    }
 
-			builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, PLoggerProvider>());
+    public static ILoggingBuilder AddPLogger(this ILoggingBuilder builder, PLoggerSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(settings);
 
-			return builder;
-		}
+        RegisterCoreServices(builder);
+        builder.Services.Configure<PLoggerOptions>(opts => CopyFromSettings(settings, opts));
+        return builder;
+    }
 
-		public static ILoggerFactory AddPLogger(this ILoggerFactory factory, IConfiguration configuration)
-		{
-			var settings = new PLoggerSettings(configuration);
-			return factory.AddPLogger(settings);
-		}
+    public static ILoggingBuilder AddPLogger(this ILoggingBuilder builder, Action<PLoggerOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
 
-		public static ILoggingBuilder AddPLogger(this ILoggingBuilder builder, PLoggerSettings settings)
-		{
-			if (builder == null)
-			{
-				throw new ArgumentNullException(nameof(builder));
-			}
+        RegisterCoreServices(builder);
+        builder.Services.Configure(configure);
+        return builder;
+    }
 
-			if (settings == null)
-			{
-				throw new ArgumentNullException(nameof(settings));
-			}
+    public static ILoggerFactory AddPLogger(this ILoggerFactory factory, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(configuration);
 
-			builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider>(new PLoggerProvider(settings)));
+        var settings = new PLoggerSettings(configuration);
+        return AddPLogger(factory, settings);
+    }
 
-			return builder;
-		}
-		public static ILoggerFactory AddPLogger(this ILoggerFactory factory)
-		{
-			if (factory == null)
-			{
-				throw new ArgumentNullException(nameof(factory));
-			}
+    public static ILoggerFactory AddPLogger(this ILoggerFactory factory)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return AddPLogger(factory, LogLevel.Information);
+    }
 
-			return AddPLogger(factory, LogLevel.Information);
-		}
+    public static ILoggerFactory AddPLogger(this ILoggerFactory factory, LogLevel minLevel)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        return AddPLogger(factory, new PLoggerSettings { Filter = (_, level) => level >= minLevel });
+    }
 
-		public static ILoggerFactory AddPLogger(this ILoggerFactory factory, LogLevel minLevel)
-		{
-			if (factory == null)
-			{
-				throw new ArgumentNullException(nameof(factory));
-			}
+    public static ILoggerFactory AddPLogger(this ILoggerFactory factory, PLoggerSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(settings);
 
-			return AddPLogger(factory, new PLoggerSettings()
-			{
-				Filter = (_, logLevel) => logLevel >= minLevel
-			});
-		}
+        // Standalone factory path (no DI host). Build the smallest possible
+        // self-hosted scaffold so the legacy code path still works.
+        var standalone = StandalonePLoggerHost.Create(settings.ToOptions());
+        factory.AddProvider(standalone.Provider);
+        return factory;
+    }
 
-		public static ILoggerFactory AddPLogger(
-			this ILoggerFactory factory,
-			PLoggerSettings settings)
-		{
-			if (factory == null)
-			{
-				throw new ArgumentNullException(nameof(factory));
-			}
+    private static void RegisterCoreServices(ILoggingBuilder builder)
+    {
+        builder.AddConfiguration();
 
-			if (settings == null)
-			{
-				throw new ArgumentNullException(nameof(settings));
-			}
+        var services = builder.Services;
+        services.TryAddSingleton<PLoggerChannel>(static sp =>
+            new PLoggerChannel(sp.GetRequiredService<IOptions<PLoggerOptions>>().Value.ChannelCapacity));
+        services.TryAddSingleton<IPLogSink>(SinkFactory);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, PLoggerProvider>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PLoggerDrainService>());
 
-			factory.AddProvider(new PLoggerProvider(settings));
-			return factory;
-		}
-	}
+        // Hand-rolled binding (AOT-safe — no ConfigurationBinder.Bind reflection).
+        // Hot reload still works because we register a change-token source that
+        // listens to the Logging:PLogger configuration section.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IConfigureOptions<PLoggerOptions>, PLoggerConfigureOptions>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<
+            IOptionsChangeTokenSource<PLoggerOptions>,
+            LoggerProviderOptionsChangeTokenSource<PLoggerOptions, PLoggerProvider>>());
+    }
+
+    private static IPLogSink SinkFactory(IServiceProvider sp)
+    {
+        var options = sp.GetRequiredService<IOptionsMonitor<PLoggerOptions>>();
+        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+        var current = options.CurrentValue;
+
+        return current.PLogType.Equals("file", StringComparison.OrdinalIgnoreCase)
+            ? new RollingFileLogSink(options, loggerFactory.CreateLogger<RollingFileLogSink>())
+            : new SqlLogSink(options, loggerFactory.CreateLogger<SqlLogSink>());
+    }
+
+    private static void CopyFromSettings(PLoggerSettings src, PLoggerOptions dst)
+    {
+        dst.PLogType = src.PLogType;
+        dst.PLogEnabled = src.PLogEnabled;
+        dst.BaseNameFile = src.BaseNameFile;
+        dst.PLogFileMaxSizeKB = src.PLogFileMaxSizeKB;
+        dst.PLogFileMessageTemplate = src.PLogFileMessageTemplate;
+        dst.StringConnection = src.StringConnection;
+        dst.StoredProcedureName = src.StoredProcedureName;
+        dst.MessageParameterName = src.MessageParameterName;
+        dst.PLogDeleteFilesOlderThanDays = src.PLogDeleteFilesOlderThanDays;
+        dst.PLogStopLoggingIfSpaceSmallerThanMB = src.PLogStopLoggingIfSpaceSmallerThanMB;
+        dst.Filter = src.Filter;
+    }
 }
