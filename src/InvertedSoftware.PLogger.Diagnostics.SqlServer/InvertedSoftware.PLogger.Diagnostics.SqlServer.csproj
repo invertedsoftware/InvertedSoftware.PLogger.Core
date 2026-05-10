@@ -6,14 +6,32 @@
     <IsPackable>true</IsPackable>
     <IsAotCompatible>true</IsAotCompatible>
     <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
 
     <PackageId>InvertedSoftware.PLogger.Diagnostics.SqlServer</PackageId>
-    <Description>SQL Server 2025 backing store for PLogger diagnostics with VECTOR(N) similarity search. Phase-2 placeholder.</Description>
+    <Description>SQL Server 2025 backing store for PLogger diagnostics. Fingerprint-keyed dedup + occurrence counting today; VECTOR(N) similarity search lights up in InvertedSoftware.PLogger.Diagnostics.AI.</Description>
     <PackageTags>logging;diagnostics;sqlserver;vector;plogger</PackageTags>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Schema\0001_initial.sql" />
   </ItemGroup>
 
 </Project>
