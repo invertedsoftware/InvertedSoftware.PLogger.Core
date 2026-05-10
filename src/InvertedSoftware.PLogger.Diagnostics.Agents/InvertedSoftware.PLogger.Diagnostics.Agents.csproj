@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics.Agents</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics.Agents</AssemblyName>
+    <IsPackable>true</IsPackable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics.Agents</PackageId>
+    <Description>Multi-agent diagnostic pipeline (Triage / Context / Diagnosis / Fix) on Microsoft Agent Framework. Phase-4 placeholder.</Description>
+    <PackageTags>logging;diagnostics;agents;plogger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

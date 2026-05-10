@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics</PackageId>
+    <Description>Abstractions for the PLogger diagnostic intelligence layer. Phase-2 placeholder — abstractions only, no providers.</Description>
+    <PackageTags>logging;diagnostics;abstractions;plogger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Core\InvertedSoftware.PLogger.Core.csproj" />
+  </ItemGroup>
+
+</Project>

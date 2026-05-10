@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics.AI</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics.AI</AssemblyName>
+    <IsPackable>true</IsPackable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics.AI</PackageId>
+    <Description>Microsoft.Extensions.AI integration for PLogger — root-cause diagnosis via IChatClient. Phase-3 placeholder.</Description>
+    <PackageTags>logging;diagnostics;ai;ichatclient;plogger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

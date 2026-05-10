@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics.Mcp</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics.Mcp</AssemblyName>
+    <IsPackable>true</IsPackable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics.Mcp</PackageId>
+    <Description>MCP server exposing PLogger diagnostics as tools for Claude Code, Copilot, and other agents. Phase-5 placeholder.</Description>
+    <PackageTags>logging;diagnostics;mcp;plogger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>InvertedSoftware.PLogger.Diagnostics.SqlServer</RootNamespace>
+    <AssemblyName>InvertedSoftware.PLogger.Diagnostics.SqlServer</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+
+    <PackageId>InvertedSoftware.PLogger.Diagnostics.SqlServer</PackageId>
+    <Description>SQL Server 2025 backing store for PLogger diagnostics with VECTOR(N) similarity search. Phase-2 placeholder.</Description>
+    <PackageTags>logging;diagnostics;sqlserver;vector;plogger</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </ItemGroup>
+
+</Project>
