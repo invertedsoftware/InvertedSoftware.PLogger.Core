@@ -51,5 +51,8 @@ coverage*.info
 .DS_Store
 Thumbs.db
 
+# Sample-app runtime artefacts
+samples/**/plogger*.txt
+
 # AOT/PublishOutput
 publish/

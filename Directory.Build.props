@@ -13,19 +13,16 @@
 
     <Authors>Inverted Software</Authors>
     <Company>Inverted Software</Company>
-    <Copyright>Copyright (c) Inverted Software</Copyright>
+    <Copyright>Copyright (c) Inverted Software. Licensed under Apache-2.0.</Copyright>
     <PackageProjectUrl>https://github.com/invertedsoftware/InvertedSoftware.PLogger.Core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/invertedsoftware/InvertedSoftware.PLogger.Core</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageLicenseFile></PackageLicenseFile>
 
     <Version>2.0.0-preview.1</Version>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(IsPackable)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="" Visible="false" />
-  </ItemGroup>
 
 </Project>
