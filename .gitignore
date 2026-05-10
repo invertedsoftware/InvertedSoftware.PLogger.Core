@@ -26,6 +26,7 @@ bld/
 .dotnet/
 .vscode/
 .idea/
+.claude/
 
 # NuGet
 *.nupkg

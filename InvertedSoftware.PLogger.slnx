@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/InvertedSoftware.PLogger.Sample.Web/InvertedSoftware.PLogger.Sample.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/InvertedSoftware.PLogger.Core/InvertedSoftware.PLogger.Core.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Agents/InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.AI/InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Mcp/InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.SqlServer/InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics/InvertedSoftware.PLogger.Diagnostics.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/InvertedSoftware.PLogger.Core.Benchmarks/InvertedSoftware.PLogger.Core.Benchmarks.csproj" />
+    <Project Path="tests/InvertedSoftware.PLogger.Core.Tests/InvertedSoftware.PLogger.Core.Tests.csproj" />
+  </Folder>
+</Solution>
