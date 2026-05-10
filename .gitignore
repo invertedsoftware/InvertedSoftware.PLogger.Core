@@ -1,0 +1,54 @@
+## Standard .NET .gitignore — adapted from `dotnet new gitignore`
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache files
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# Tools
+.dotnet/
+.vscode/
+.idea/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+*.nuget.props
+*.nuget.targets
+
+# BenchmarkDotNet output
+BenchmarkDotNet.Artifacts/
+
+# Test results
+TestResults/
+*.trx
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AOT/PublishOutput
+publish/
