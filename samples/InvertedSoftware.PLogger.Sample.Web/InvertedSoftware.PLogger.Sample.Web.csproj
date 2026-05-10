@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Core\InvertedSoftware.PLogger.Core.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SqlServer\InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,8 @@
-// Copyright (c) Inverted Software. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) Inverted Software.
 
+using InvertedSoftware.PLogger.Core.Fingerprinting;
+using InvertedSoftware.PLogger.Diagnostics;
 using InvertedSoftware.PLogger.Sample.Web;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -17,12 +20,20 @@ builder.Logging.AddSimpleConsole(static o =>
 });
 builder.Logging.AddPLogger();
 
+// Diagnostics + SQL store light up only when the master switch is on AND a
+// connection string is configured. Default behavior matches Phase 1 exactly.
+var diag = builder.Logging.AddPLoggerDiagnostics();
+if (!string.IsNullOrEmpty(builder.Configuration["Logging:PLogger:Diagnostics:Storage:ConnectionString"]))
+{
+    diag.AddSqlServerStore();
+}
+
 var app = builder.Build();
 
 app.MapGet("/", static () => Results.Ok(new
 {
     name = "InvertedSoftware.PLogger.Sample.Web",
-    docs = "/health, /log, /throw",
+    docs = "/health, /log, /throw, /diagnostics/{fingerprintHex}",
 }));
 
 app.MapGet("/health", static () => Results.Ok(new { status = "ok" }));
@@ -47,6 +58,37 @@ app.MapGet("/throw", static (ILoggerFactory factory) =>
         logger.LogError(ex, "boom from /throw");
         return Results.StatusCode(StatusCodes.Status500InternalServerError);
     }
+});
+
+// Reads the diagnostic store back. Useful for confirming dedup end-to-end:
+//   curl /throw   (50 times)
+//   curl /diagnostics/{fingerprintHex}
+// Should show OccurrenceCount=50.
+app.MapGet("/diagnostics/{fingerprintHex}",
+    static async (string fingerprintHex, IDiagnosticStore? store, CancellationToken ct) =>
+    {
+        if (store is null)
+        {
+            return Results.Problem("No IDiagnosticStore registered. Set Logging:PLogger:Diagnostics:Storage:ConnectionString.");
+        }
+        var fp = Convert.FromHexString(fingerprintHex);
+        var record = await store.GetByFingerprintAsync(fp, ct);
+        return record is null ? Results.NotFound() : Results.Ok(record);
+    });
+
+// Helper: returns the canonical fingerprint hex for the /throw exception so
+// you don't have to compute it by hand.
+app.MapGet("/throw/fingerprint", static () =>
+{
+    try { ThrowOnDemand(); }
+    catch (Exception ex)
+    {
+        return Results.Ok(new
+        {
+            fingerprintHex = Convert.ToHexString(StackFingerprinter.Compute(ex)),
+        });
+    }
+    return Results.Problem("unreachable");
 });
 
 app.Run();

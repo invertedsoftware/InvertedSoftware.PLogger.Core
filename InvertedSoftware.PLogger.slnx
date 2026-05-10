@@ -13,5 +13,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/InvertedSoftware.PLogger.Core.Benchmarks/InvertedSoftware.PLogger.Core.Benchmarks.csproj" />
     <Project Path="tests/InvertedSoftware.PLogger.Core.Tests/InvertedSoftware.PLogger.Core.Tests.csproj" />
+    <Project Path="tests/InvertedSoftware.PLogger.Diagnostics.Tests/InvertedSoftware.PLogger.Diagnostics.Tests.csproj" />
   </Folder>
 </Solution>
