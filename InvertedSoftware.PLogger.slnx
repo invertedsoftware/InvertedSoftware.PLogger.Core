@@ -6,9 +6,12 @@
     <Project Path="src/InvertedSoftware.PLogger.Core/InvertedSoftware.PLogger.Core.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Agents/InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.AI/InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.GitHub/InvertedSoftware.PLogger.Diagnostics.GitHub.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Mcp/InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Slack/InvertedSoftware.PLogger.Diagnostics.Slack.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.SourceLink/InvertedSoftware.PLogger.Diagnostics.SourceLink.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics.SqlServer/InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
+    <Project Path="src/InvertedSoftware.PLogger.Diagnostics.Teams/InvertedSoftware.PLogger.Diagnostics.Teams.csproj" />
     <Project Path="src/InvertedSoftware.PLogger.Diagnostics/InvertedSoftware.PLogger.Diagnostics.csproj" />
   </Folder>
   <Folder Name="/tests/">

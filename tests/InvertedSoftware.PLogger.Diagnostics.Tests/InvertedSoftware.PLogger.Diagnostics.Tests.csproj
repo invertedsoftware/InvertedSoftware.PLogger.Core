@@ -32,6 +32,9 @@
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.AI\InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Agents\InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Mcp\InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.GitHub\InvertedSoftware.PLogger.Diagnostics.GitHub.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Slack\InvertedSoftware.PLogger.Diagnostics.Slack.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Teams\InvertedSoftware.PLogger.Diagnostics.Teams.csproj" />
   </ItemGroup>
 
   <ItemGroup>
