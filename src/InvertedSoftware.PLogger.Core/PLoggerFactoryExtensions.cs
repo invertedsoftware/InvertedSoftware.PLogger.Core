@@ -88,7 +88,12 @@ public static class PLoggerFactoryExtensions
         var services = builder.Services;
         services.TryAddSingleton<PLoggerChannel>(static sp =>
             new PLoggerChannel(sp.GetRequiredService<IOptions<PLoggerOptions>>().Value.ChannelCapacity));
-        services.TryAddSingleton<IPLogSink>(SinkFactory);
+
+        // Default file/SQL sink is registered as one of N enumerable sinks.
+        // Phase 2+ packages (Diagnostics, notifiers) add their own IPLogSink
+        // entries via TryAddEnumerable; the drain fans every event to all of them.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPLogSink, DefaultPLogSink>());
+
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, PLoggerProvider>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PLoggerDrainService>());
 
@@ -99,17 +104,6 @@ public static class PLoggerFactoryExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<
             IOptionsChangeTokenSource<PLoggerOptions>,
             LoggerProviderOptionsChangeTokenSource<PLoggerOptions, PLoggerProvider>>());
-    }
-
-    private static IPLogSink SinkFactory(IServiceProvider sp)
-    {
-        var options = sp.GetRequiredService<IOptionsMonitor<PLoggerOptions>>();
-        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-        var current = options.CurrentValue;
-
-        return current.PLogType.Equals("file", StringComparison.OrdinalIgnoreCase)
-            ? new RollingFileLogSink(options, loggerFactory.CreateLogger<RollingFileLogSink>())
-            : new SqlLogSink(options, loggerFactory.CreateLogger<SqlLogSink>());
     }
 
     private static void CopyFromSettings(PLoggerSettings src, PLoggerOptions dst)

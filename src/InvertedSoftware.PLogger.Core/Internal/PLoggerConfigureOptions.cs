@@ -82,6 +82,17 @@ internal sealed class PLoggerConfigureOptions : IConfigureOptions<PLoggerOptions
         {
             options.ChannelCapacity = capacity;
         }
+
+        if (TryReadInt(section, "DiagnosticChannelCapacity", out var diagCap) && diagCap > 0)
+        {
+            options.DiagnosticChannelCapacity = diagCap;
+        }
+
+        var diagSection = section.GetSection("Diagnostics");
+        if (TryReadBool(diagSection, "Enabled", out var diagEnabled))
+        {
+            options.DiagnosticEnabled = diagEnabled;
+        }
     }
 
     private static bool TryReadString(IConfiguration section, string key, out string value)

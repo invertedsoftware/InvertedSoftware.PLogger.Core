@@ -51,4 +51,19 @@ public sealed class PLoggerOptions
     /// Maximum time the drain service will wait for the channel to flush on shutdown.
     /// </summary>
     public TimeSpan ShutdownDrainTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Capacity of the secondary channel that fans events out to the
+    /// diagnostic pipeline (Phase 2+). Independent from the file/SQL
+    /// drain channel so heavy diagnostic work does not back-pressure
+    /// the primary log path.
+    /// </summary>
+    public int DiagnosticChannelCapacity { get; set; } = 1024;
+
+    /// <summary>
+    /// When false (the default), no Diagnostics components are registered
+    /// even if the Diagnostics package is referenced. Phase 2 made this
+    /// strictly opt-in so 1.x consumers see zero behavioral change.
+    /// </summary>
+    public bool DiagnosticEnabled { get; set; }
 }
