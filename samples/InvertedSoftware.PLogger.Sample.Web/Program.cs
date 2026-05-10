@@ -33,7 +33,7 @@ var app = builder.Build();
 app.MapGet("/", static () => Results.Ok(new
 {
     name = "InvertedSoftware.PLogger.Sample.Web",
-    docs = "/health, /log, /throw, /diagnostics/{fingerprintHex}",
+    docs = "/health, /log, /throw, /diagnose, /diagnostics/{fingerprintHex}",
 }));
 
 app.MapGet("/health", static () => Results.Ok(new { status = "ok" }));
@@ -90,6 +90,42 @@ app.MapGet("/throw/fingerprint", static () =>
     }
     return Results.Problem("unreachable");
 });
+
+// Synchronous diagnose: throws, runs the configured IDiagnosticAgent inline,
+// and returns the resulting hypothesis + proposed fix. Demonstrates the
+// AI-driven flow without waiting for the channel/drain to catch up.
+app.MapGet("/diagnose",
+    static async (IDiagnosticEnricher enricher, IDiagnosticAgent agent, CancellationToken ct) =>
+    {
+        try { ThrowOnDemand(); }
+        catch (Exception ex)
+        {
+            var evt = new InvertedSoftware.PLogger.Core.LogEvent(
+                DateTimeOffset.UtcNow,
+                Microsoft.Extensions.Logging.LogLevel.Error,
+                "Sample.Diagnose",
+                new EventId(1),
+                "synthetic for diagnosis",
+                ex,
+                Array.Empty<KeyValuePair<string, object?>>(),
+                System.Diagnostics.Activity.Current?.TraceId.ToString(),
+                System.Diagnostics.Activity.Current?.SpanId.ToString());
+
+            var ctx = await enricher.EnrichAsync(evt, ct);
+            if (ctx is null)
+            {
+                return Results.Problem("Enricher returned null.");
+            }
+            var diagnosis = await agent.DiagnoseAsync(ctx, ct);
+            return Results.Ok(new
+            {
+                fingerprintHex = ctx.Fingerprint.HashHex,
+                diagnosis,
+                source = ctx.Source,
+            });
+        }
+        return Results.Problem("unreachable");
+    });
 
 app.Run();
 

@@ -54,7 +54,34 @@ public sealed class DefaultDiagnosticPipeline : IDiagnosticPipeline
             return;
         }
 
+        // Vector dedup gate: if the enricher populated an embedding and the
+        // store finds a similar prior diagnosis, reuse its hypothesis and
+        // skip the (expensive) agent call. Phase 3+ enricher populates this;
+        // Phase 2's default leaves it null and the gate is a no-op.
         DiagnosisResult? diagnosis = null;
+        if (ctx.Embedding is { } embedding)
+        {
+            try
+            {
+                var similar = await _store.FindSimilarAsync(embedding, threshold: 0.92, limit: 1, cancellationToken).ConfigureAwait(false);
+                if (similar.Count > 0 && !string.IsNullOrEmpty(similar[0].Diagnosis))
+                {
+                    // Reuse — no need to call the agent.
+                    await _store.UpsertAsync(ctx, diagnosis: null, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                DiagnosticsLog.StoreUpsertFailed(_logger, ctx.Fingerprint.HashHex, ex);
+                // Fall through — try to diagnose normally.
+            }
+        }
+
         try
         {
             diagnosis = await _agent.DiagnoseAsync(ctx, cancellationToken).ConfigureAwait(false);

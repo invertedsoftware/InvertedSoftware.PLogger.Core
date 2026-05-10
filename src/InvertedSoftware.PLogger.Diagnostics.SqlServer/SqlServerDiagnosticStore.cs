@@ -133,15 +133,64 @@ SELECT TOP 1 Id, Fingerprint, FirstSeenUtc, LastSeenUtc, OccurrenceCount,
         return MapRecord(reader);
     }
 
-    public ValueTask<IReadOnlyList<DiagnosticRecord>> FindSimilarAsync(
+    public async ValueTask<IReadOnlyList<DiagnosticRecord>> FindSimilarAsync(
         ReadOnlyMemory<float> embedding,
         double threshold,
         int limit,
         CancellationToken cancellationToken)
     {
-        // Phase 2 stub. Phase 3 fills this in with VECTOR_DISTANCE once
-        // embeddings are populated by Diagnostics.AI.
-        return ValueTask.FromResult(EmptySimilar);
+        if (embedding.IsEmpty)
+        {
+            return EmptySimilar;
+        }
+
+        var sqlOpts = _sqlOptions.CurrentValue;
+        var diagOpts = _diagOptions.CurrentValue;
+
+        // SQL Server 2025 native VECTOR_DISTANCE; on 2022 (used by the
+        // dev-box Testcontainers image) this errors out — caller catches.
+        // The pipeline tolerates a failing FindSimilarAsync as a no-hit.
+        const string sql = @"
+SELECT TOP(@Limit)
+       Id, Fingerprint, FirstSeenUtc, LastSeenUtc, OccurrenceCount,
+       AppName, Environment, ExceptionType, ExceptionMessage, NormalizedStack,
+       SourceFile, SourceLine, Diagnosis, ResolutionState, GitHubIssueUrl, AppliedCommitSha,
+       VECTOR_DISTANCE('cosine', DiagnosisVector, CAST(@Vector AS VECTOR(1536))) AS Distance
+  FROM plogger.Diagnostics
+ WHERE AppName = @AppName AND Environment = @Environment AND DiagnosisVector IS NOT NULL
+   AND VECTOR_DISTANCE('cosine', DiagnosisVector, CAST(@Vector AS VECTOR(1536))) <= (1 - @Threshold)
+ ORDER BY Distance ASC;
+";
+        await using var connection = new SqlConnection(sqlOpts.ConnectionString);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.CommandTimeout = sqlOpts.CommandTimeoutSeconds;
+        cmd.Parameters.Add(new SqlParameter("@Limit", SqlDbType.Int) { Value = limit });
+        cmd.Parameters.Add(new SqlParameter("@AppName", SqlDbType.NVarChar, 200) { Value = diagOpts.AppName });
+        cmd.Parameters.Add(new SqlParameter("@Environment", SqlDbType.NVarChar, 50) { Value = diagOpts.Environment });
+        cmd.Parameters.Add(new SqlParameter("@Threshold", SqlDbType.Float) { Value = threshold });
+        cmd.Parameters.Add(new SqlParameter("@Vector", SqlDbType.NVarChar, -1)
+        {
+            Value = SerializeVector(embedding.Span),
+        });
+
+        var results = new List<DiagnosticRecord>(limit);
+        try
+        {
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                results.Add(MapRecord(reader));
+            }
+        }
+        catch (SqlException)
+        {
+            // VECTOR_DISTANCE not available (SQL < 2025) or vector column
+            // empty. Treat as no-hit; the pipeline will run the agent.
+            return EmptySimilar;
+        }
+        return results;
     }
 
     public async ValueTask MarkFixAppliedAsync(byte[] fingerprint, string commitSha, CancellationToken cancellationToken)
@@ -184,6 +233,26 @@ VALUES (@DiagnosticId, @OccurredUtc, @TraceId, @SpanId);
         cmd.Parameters.Add(new SqlParameter("@TraceId", SqlDbType.NVarChar, 64) { Value = (object?)evt.TraceId ?? DBNull.Value });
         cmd.Parameters.Add(new SqlParameter("@SpanId", SqlDbType.NVarChar, 32) { Value = (object?)evt.SpanId ?? DBNull.Value });
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// AOT-safe JSON encoding of a float vector — SQL Server's
+    /// CAST('[0.1,0.2,…]' AS VECTOR(N)) accepts the JSON-array shape.
+    /// </summary>
+    private static string SerializeVector(ReadOnlySpan<float> vector)
+    {
+        var sb = new System.Text.StringBuilder(vector.Length * 12);
+        sb.Append('[');
+        for (var i = 0; i < vector.Length; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append(',');
+            }
+            sb.Append(vector[i].ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+        }
+        sb.Append(']');
+        return sb.ToString();
     }
 
     private static DiagnosticRecord MapRecord(SqlDataReader reader)

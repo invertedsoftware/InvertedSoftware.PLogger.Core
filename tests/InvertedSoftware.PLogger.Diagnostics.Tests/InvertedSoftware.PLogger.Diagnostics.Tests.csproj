@@ -27,6 +27,8 @@
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Core\InvertedSoftware.PLogger.Core.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SqlServer\InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SourceLink\InvertedSoftware.PLogger.Diagnostics.SourceLink.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.AI\InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

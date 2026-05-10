@@ -84,12 +84,21 @@ internal sealed class FakeDiagnosticStore : IDiagnosticStore
         }
     }
 
+    /// <summary>Pre-canned response for FindSimilarAsync; defaults to empty.</summary>
+    public IReadOnlyList<DiagnosticRecord> SimilarResponse { get; set; } = Array.Empty<DiagnosticRecord>();
+
+    /// <summary>Number of times FindSimilarAsync was called.</summary>
+    public int FindSimilarCalls { get; private set; }
+
     public ValueTask<IReadOnlyList<DiagnosticRecord>> FindSimilarAsync(
         ReadOnlyMemory<float> embedding,
         double threshold,
         int limit,
         CancellationToken cancellationToken)
-        => ValueTask.FromResult<IReadOnlyList<DiagnosticRecord>>(Array.Empty<DiagnosticRecord>());
+    {
+        FindSimilarCalls++;
+        return ValueTask.FromResult(SimilarResponse);
+    }
 
     public ValueTask MarkFixAppliedAsync(byte[] fingerprint, string commitSha, CancellationToken cancellationToken)
     {
