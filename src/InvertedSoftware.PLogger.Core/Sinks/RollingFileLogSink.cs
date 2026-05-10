@@ -81,15 +81,19 @@ public sealed class RollingFileLogSink : IPLogSink
             return;
         }
 
-        var template = _options.CurrentValue.PLogFileMessageTemplate;
-        var line = LogEventFormatter.Format(evt, template);
+        // Snapshot CurrentValue once per event — the IOptionsMonitor cache hit
+        // is cheap, but two reads is two virtual calls + dictionary lookups,
+        // and consistency between template + maxBytes matters for correctness
+        // on a hot-reload boundary.
+        var opts = _options.CurrentValue;
+        var line = LogEventFormatter.Format(evt, opts.PLogFileMessageTemplate);
 
         try
         {
             await _writer.WriteLineAsync(line.AsMemory(), cancellationToken).ConfigureAwait(false);
             await _writer.FlushAsync(cancellationToken).ConfigureAwait(false);
 
-            var maxBytes = (long)_options.CurrentValue.PLogFileMaxSizeKB * 1024;
+            var maxBytes = (long)opts.PLogFileMaxSizeKB * 1024;
             if (maxBytes > 0 && _stream.Position > maxBytes)
             {
                 RollFile();
@@ -170,20 +174,39 @@ public sealed class RollingFileLogSink : IPLogSink
 
     private void RollFile()
     {
+        // Tear down the old handles first; null the fields so any racing
+        // write would early-out via the _disabled guard rather than touch
+        // disposed instances if OpenStream below throws.
+        var oldWriter = _writer;
+        var oldStream = _stream;
+        _writer = null;
+        _stream = null;
+
         try
         {
-            _writer?.Flush();
-            _writer?.Dispose();
-            _stream?.Dispose();
+            oldWriter?.Flush();
+            oldWriter?.Dispose();
+            oldStream?.Dispose();
         }
         catch
         {
-            // ignored — recreating below
+            // ignored — we're tearing them down anyway
         }
 
         var ticks = DateTime.UtcNow.Ticks.ToString(CultureInfo.InvariantCulture);
-        _currentFile = Path.Combine(_baseDirectory, $"{_baseName}{ticks}{_baseExtension}");
-        OpenStream(_currentFile);
+        var nextPath = Path.Combine(_baseDirectory, $"{_baseName}{ticks}{_baseExtension}");
+        try
+        {
+            OpenStream(nextPath);
+            _currentFile = nextPath;
+        }
+        catch (Exception ex)
+        {
+            // Couldn't open the rolled file (locked path, disk full, AV, etc.).
+            // Disable the sink instead of leaving half-state behind.
+            PLoggerLog.FileSinkInitFailed(_selfLogger, nextPath, ex);
+            _disabled = true;
+        }
     }
 
     private void TryAppendInternal(string raw)

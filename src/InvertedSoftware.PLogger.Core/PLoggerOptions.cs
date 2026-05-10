@@ -37,7 +37,8 @@ public sealed class PLoggerOptions
 
     public long PLogStopLoggingIfSpaceSmallerThanMB { get; set; }
 
-    /// <summary>Optional category/level filter. Not bindable from configuration.</summary>
+    /// <summary>Optional category/level filter. Not bindable from configuration nor serializable.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public Func<string, LogLevel, bool>? Filter { get; set; }
 
     /// <summary>

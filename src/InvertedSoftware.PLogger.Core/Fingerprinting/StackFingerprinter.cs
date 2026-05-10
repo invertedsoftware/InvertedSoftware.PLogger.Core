@@ -34,10 +34,17 @@ public static partial class StackFingerprinter
     [GeneratedRegex(@"<>c__DisplayClass\d+(_\d+)?", RegexOptions.CultureInvariant)]
     private static partial Regex DisplayClassRegex();
 
-    [GeneratedRegex(@"<[^>]+>d__\d+", RegexOptions.CultureInvariant)]
+    // CoreCLR uses <Method>d__N for async state machines.
+    // Mono's roslyn-equivalent compiler uses the same shape for modern code,
+    // but historical Mono / older monodevelop emitted <Method>c__async\d+.
+    [GeneratedRegex(@"<[^>]+>(?:d__|c__async)\d+", RegexOptions.CultureInvariant)]
     private static partial Regex AsyncStateMachineRegex();
 
-    [GeneratedRegex(@"<>c(?:__\d+(?:_\d+)?)?", RegexOptions.CultureInvariant)]
+    // CoreCLR closure-class flavours: <>c, <>c__N, <>c__N_M.
+    // Mono additionally emits <>c__AnonStorey\d+ and <Method>c__Iterator\d+
+    // for iterators / closures.
+    [GeneratedRegex(@"<>c(?:__\d+(?:_\d+)?)?|<>c__AnonStorey\d+|<[^>]+>c__Iterator\d+",
+        RegexOptions.CultureInvariant)]
     private static partial Regex ClosureClassRegex();
 
     [GeneratedRegex(@"\.MoveNext\b", RegexOptions.CultureInvariant)]

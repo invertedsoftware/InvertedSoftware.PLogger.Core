@@ -36,22 +36,22 @@ public sealed class PLogger : ILogger
     private readonly string _category;
     private readonly IOptionsMonitor<PLoggerOptions> _options;
     private readonly PLoggerChannel _channel;
-    private readonly IExternalScopeProvider? _scopeProvider;
+    private readonly Func<IExternalScopeProvider?> _scopeProviderLookup;
 
     public PLogger(
         string category,
         IOptionsMonitor<PLoggerOptions> options,
         PLoggerChannel channel,
-        IExternalScopeProvider? scopeProvider)
+        Func<IExternalScopeProvider?> scopeProviderLookup)
     {
         _category = string.IsNullOrEmpty(category) ? nameof(PLogger) : category;
         _options = options;
         _channel = channel;
-        _scopeProvider = scopeProvider;
+        _scopeProviderLookup = scopeProviderLookup;
     }
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-        => _scopeProvider?.Push(state);
+        => _scopeProviderLookup()?.Push(state);
 
     public bool IsEnabled(LogLevel logLevel)
     {
@@ -125,14 +125,15 @@ public sealed class PLogger : ILogger
 
     private IReadOnlyList<KeyValuePair<string, object?>> CaptureScope()
     {
-        if (_scopeProvider is null)
+        var scopeProvider = _scopeProviderLookup();
+        if (scopeProvider is null)
         {
             return EmptyScope;
         }
 
         var buf = t_scopeBuffer ??= new List<KeyValuePair<string, object?>>(4);
         buf.Clear();
-        _scopeProvider.ForEachScope(AppendScope, buf);
+        scopeProvider.ForEachScope(AppendScope, buf);
 
         if (buf.Count == 0)
         {

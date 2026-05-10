@@ -13,7 +13,7 @@ public class PLoggerHotPathTests
     {
         var channel = new PLoggerChannel(64);
         var monitor = new TestOptionsMonitor(new PLoggerOptions());
-        var logger = new PLogger("MyCat", monitor, channel, scopeProvider: null);
+        var logger = new PLogger("MyCat", monitor, channel, scopeProviderLookup: static () => null);
 
         logger.LogInformation("hello");
 
@@ -30,7 +30,7 @@ public class PLoggerHotPathTests
     {
         var channel = new PLoggerChannel(64);
         var monitor = new TestOptionsMonitor(new PLoggerOptions { PLogEnabled = false });
-        var logger = new PLogger("Off", monitor, channel, scopeProvider: null);
+        var logger = new PLogger("Off", monitor, channel, scopeProviderLookup: static () => null);
 
         logger.LogError("nope");
 
@@ -55,7 +55,7 @@ public class PLoggerHotPathTests
 
         var channel = new PLoggerChannel(64);
         var monitor = new TestOptionsMonitor(new PLoggerOptions());
-        var logger = new PLogger("Otel", monitor, channel, scopeProvider: null);
+        var logger = new PLogger("Otel", monitor, channel, scopeProviderLookup: static () => null);
 
         logger.LogInformation("traced");
 
@@ -70,7 +70,7 @@ public class PLoggerHotPathTests
     {
         var channel = new PLoggerChannel(64);
         var monitor = new TestOptionsMonitor(new PLoggerOptions());
-        var logger = new PLogger("BadFmt", monitor, channel, scopeProvider: null);
+        var logger = new PLogger("BadFmt", monitor, channel, scopeProviderLookup: static () => null);
 
         // Custom formatter that throws — must not bubble.
         logger.Log<string>(LogLevel.Error, new EventId(1), state: "x", exception: null,

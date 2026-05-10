@@ -23,7 +23,12 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <!--
+      Microsoft.Extensions.Configuration.Binder is intentionally NOT
+      referenced. PLoggerConfigureOptions hand-rolls binding via the
+      string indexer (section[key]) so the analyzer keeps consumer code
+      from accidentally re-introducing reflection-based Bind() paths.
+    -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

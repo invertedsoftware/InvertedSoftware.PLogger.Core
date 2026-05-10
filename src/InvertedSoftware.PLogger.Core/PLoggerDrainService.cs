@@ -61,24 +61,28 @@ public sealed class PLoggerDrainService : BackgroundService
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask DispatchAsync(LogEvent evt, CancellationToken cancellationToken)
+    private async ValueTask DispatchAsync(LogEvent evt, CancellationToken stoppingToken)
     {
         // Fan-out: each sink fails independently. One bad sink never starves the others.
-        // We deliberately do NOT rethrow on cancellation here — the event has already
-        // been dequeued, so abandoning it mid-fan-out would lose deliveries that the
-        // grace-period drain cannot recover. The outer foreach detects cancellation
-        // on the next MoveNextAsync and exits naturally.
+        // We pass CancellationToken.None to each sink so a cancellation that fires
+        // mid-event doesn't lose deliveries to sinks that hadn't been called yet —
+        // the event was already dequeued from the channel and can't be re-read.
+        // The outer foreach detects cancellation on the next MoveNextAsync and
+        // exits naturally; the grace-period drain in DrainRemainingAsync handles
+        // anything still buffered in the channel.
         foreach (var sink in _sinks)
         {
             try
             {
-                await sink.WriteAsync(evt, cancellationToken).ConfigureAwait(false);
+                await sink.WriteAsync(evt, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 PLoggerLog.DrainEntryFailed(_selfLogger, sink.GetType().Name, ex);
             }
         }
+
+        _ = stoppingToken; // foreach detects cancellation at next MoveNextAsync
     }
 
     private async Task DrainRemainingAsync()

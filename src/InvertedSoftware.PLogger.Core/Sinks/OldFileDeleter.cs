@@ -29,9 +29,12 @@ internal sealed class OldFileDeleter : IDisposable
         _writeAudit = writeAudit;
         _selfLogger = selfLogger;
 
-        Tick();
+        // Defer the first sweep to the timer's first elapse — running it
+        // synchronously from the ctor would write audit lines through
+        // _writeAudit before the file sink that constructed us has fully
+        // wired up its writer/stream fields.
         var period = TimeSpan.FromDays(1);
-        _timer = new Timer(_ => Tick(), state: null, dueTime: period, period: period);
+        _timer = new Timer(_ => Tick(), state: null, dueTime: TimeSpan.FromMinutes(1), period: period);
     }
 
     private void Tick()

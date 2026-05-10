@@ -96,6 +96,13 @@ public class PLoggerSettings
     public string BaseNameFile { get; set; }
     public int PLogFileMaxSizeKB { get; set; }
     public string PLogFileMessageTemplate { get; set; }
+    /// <summary>
+    /// Optional category/level filter delegate. Not serializable — only
+    /// settable in code. The <see cref="System.Text.Json.Serialization.JsonIgnoreAttribute"/>
+    /// keeps the JSON source generator from trying to emit metadata for
+    /// the <see cref="Func{T1,T2,TResult}"/> type.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public Func<string, LogLevel, bool>? Filter { get; set; }
     public string StringConnection { get; set; }
     public string StoredProcedureName { get; set; }

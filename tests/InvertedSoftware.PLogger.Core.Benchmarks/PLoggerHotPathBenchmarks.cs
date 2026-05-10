@@ -33,7 +33,7 @@ public class PLoggerHotPathBenchmarks
     {
         var channel = new PLoggerChannel(1 << 17);
         var monitor = new StaticOptionsMonitor(new PLoggerOptions());
-        _plogger = new PLogger("Bench", monitor, channel, scopeProvider: null);
+        _plogger = new PLogger("Bench", monitor, channel, scopeProviderLookup: static () => null);
 
         _consoleFactory = LoggerFactory.Create(static b =>
         {

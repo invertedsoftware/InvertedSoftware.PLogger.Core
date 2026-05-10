@@ -1,6 +1,6 @@
-// Copyright (c) Inverted Software. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) Inverted Software.
 
-using System.Diagnostics.CodeAnalysis;
 using InvertedSoftware.PLogger.Core.Sinks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -13,14 +13,22 @@ namespace InvertedSoftware.PLogger.Core.Internal;
 /// <see cref="ILoggerFactory"/>.<c>AddPLogger</c> outside of a real DI/Host
 /// pipeline. Spins up a channel, sink, and a single drain task.
 /// </summary>
-internal sealed class StandalonePLoggerHost : IDisposable
+/// <remarks>
+/// Implements both <see cref="IDisposable"/> and <see cref="IAsyncDisposable"/>
+/// so callers in async-aware contexts (modern ASP.NET, generic-host apps)
+/// avoid the sync-over-async deadlock pattern. The synchronous
+/// <see cref="Dispose"/> path is best-effort: it does NOT cancel the
+/// drain (which would lose dequeued events), only completes the channel
+/// and waits for the natural drain to finish, then disposes the sink.
+/// </remarks>
+internal sealed class StandalonePLoggerHost : IAsyncDisposable, IDisposable
 {
     public PLoggerProvider Provider { get; }
 
     private readonly PLoggerChannel _channel;
     private readonly IPLogSink _sink;
-    private readonly CancellationTokenSource _cts = new();
     private readonly Task _drainTask;
+    private int _disposed;
 
     private StandalonePLoggerHost(PLoggerOptions options)
     {
@@ -31,20 +39,23 @@ internal sealed class StandalonePLoggerHost : IDisposable
             : new SqlLogSink(monitor, NullLogger<SqlLogSink>.Instance);
 
         Provider = new PLoggerProvider(monitor, _channel);
-        _drainTask = Task.Run(() => RunDrainAsync(_cts.Token));
+        _drainTask = Task.Run(RunDrainAsync);
     }
 
     public static StandalonePLoggerHost Create(PLoggerOptions options) => new(options);
 
-    private async Task RunDrainAsync(CancellationToken token)
+    private async Task RunDrainAsync()
     {
+        // Read until the channel is completed and empty; never cancelled —
+        // this is the no-host fallback so we don't have a stoppingToken,
+        // and the dispose path uses Complete() to terminate the drain.
         try
         {
-            await foreach (var evt in _channel.Reader.ReadAllAsync(token).ConfigureAwait(false))
+            await foreach (var evt in _channel.Reader.ReadAllAsync().ConfigureAwait(false))
             {
                 try
                 {
-                    await _sink.WriteAsync(evt, token).ConfigureAwait(false);
+                    await _sink.WriteAsync(evt, CancellationToken.None).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -52,30 +63,60 @@ internal sealed class StandalonePLoggerHost : IDisposable
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch
         {
-            // expected
+            // No path here should propagate.
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         _channel.Complete();
-        _cts.Cancel();
         try
         {
-            _drainTask.Wait(TimeSpan.FromSeconds(5));
+            await _drainTask.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        }
+        catch
+        {
+            // grace exhausted; we still try to dispose the sink below.
+        }
+
+        try
+        {
+            await _sink.DisposeAsync().ConfigureAwait(false);
         }
         catch
         {
             // ignored
         }
-        _sink.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
-        _cts.Dispose();
+    }
+
+    /// <summary>
+    /// Synchronous fallback for callers that can't await. Avoids the
+    /// classic sync-over-async deadlock by running the async dispose on
+    /// a fresh thread-pool task with no captured SynchronizationContext.
+    /// </summary>
+    public void Dispose()
+    {
+        if (Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
+        // Run the async path with no captured context; the join is bounded.
+        Task.Run(async () => await DisposeAsync().ConfigureAwait(false))
+            .Wait(TimeSpan.FromSeconds(8));
     }
 }
 
-internal sealed class StaticOptionsMonitor<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T>
+internal sealed class StaticOptionsMonitor<
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(
+        System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T>
     : IOptionsMonitor<T>
     where T : class
 {
