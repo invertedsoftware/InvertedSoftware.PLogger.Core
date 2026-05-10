@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SourceLink\InvertedSoftware.PLogger.Diagnostics.SourceLink.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.AI\InvertedSoftware.PLogger.Diagnostics.AI.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Agents\InvertedSoftware.PLogger.Diagnostics.Agents.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Mcp\InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

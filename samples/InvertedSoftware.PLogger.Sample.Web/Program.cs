@@ -28,6 +28,10 @@ if (!string.IsNullOrEmpty(builder.Configuration["Logging:PLogger:Diagnostics:Sto
     diag.AddSqlServerStore();
 }
 
+// MCP server registration is always cheap. The endpoint only mounts if
+// Logging:PLogger:Diagnostics:Mcp:Enabled=true (see MapPLoggerMcp below).
+diag.AddPLoggerMcpServer();
+
 var app = builder.Build();
 
 app.MapGet("/", static () => Results.Ok(new
@@ -126,6 +130,9 @@ app.MapGet("/diagnose",
         }
         return Results.Problem("unreachable");
     });
+
+// Mount MCP if configured.
+app.MapPLoggerMcp();
 
 app.Run();
 

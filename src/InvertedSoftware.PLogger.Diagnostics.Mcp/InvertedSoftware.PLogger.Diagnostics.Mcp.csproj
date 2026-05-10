@@ -5,10 +5,29 @@
     <AssemblyName>InvertedSoftware.PLogger.Diagnostics.Mcp</AssemblyName>
     <IsPackable>true</IsPackable>
 
+    <!--
+      MCP server hosts ASP.NET Core endpoints; the SDK uses reflection
+      for tool metadata. Library is therefore not AOT-clean. Other
+      Diagnostics.* packages stay AOT-clean.
+    -->
+    <IsAotCompatible>false</IsAotCompatible>
+
     <PackageId>InvertedSoftware.PLogger.Diagnostics.Mcp</PackageId>
-    <Description>MCP server exposing PLogger diagnostics as tools for Claude Code, Copilot, and other agents. Phase-5 placeholder.</Description>
-    <PackageTags>logging;diagnostics;mcp;plogger</PackageTags>
+    <Description>MCP server exposing PLogger diagnostics as tools (get_recent_diagnostics, get_diagnosis, find_similar, mark_fix_applied, list_unresolved, get_recent_logs) for Claude Code, Copilot, and other dev-time agents.</Description>
+    <PackageTags>logging;diagnostics;mcp;modelcontextprotocol;plogger</PackageTags>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />

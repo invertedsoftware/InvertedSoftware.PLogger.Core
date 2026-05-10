@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Core\InvertedSoftware.PLogger.Core.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics\InvertedSoftware.PLogger.Diagnostics.csproj" />
     <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.SqlServer\InvertedSoftware.PLogger.Diagnostics.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\InvertedSoftware.PLogger.Diagnostics.Mcp\InvertedSoftware.PLogger.Diagnostics.Mcp.csproj" />
   </ItemGroup>
 
 </Project>
